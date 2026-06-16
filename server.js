@@ -244,6 +244,8 @@ function cerebrasRoastStream(res, messages) {
 
   const payload = JSON.stringify({
     model: CEREBRAS_MODEL, messages, stream: true, temperature: 0.9, max_tokens: 800,
+    // GLM-4.7 is a reasoning model; turn thinking OFF so the roast streams instantly.
+    chat_template_kwargs: { enable_thinking: false },
   });
   let anyEmit = false, finished = false, rawBuf = "", emitted = 0, buf = "";
   const finish = (fb) => {
@@ -575,23 +577,35 @@ const server = http.createServer(async (req, res) => {
       return cerebrasRoastStream(res, buildPromptMessages(data.user.login, data.user.name, data.stats));
     }
 
-    // Probe whether Cerebras is reachable FROM THIS RUNTIME (Railway). No secret leaked.
+    // Flexible Cerebras probe from THIS runtime (Railway). ?mode=stream tests SSE;
+    // ?think=1 leaves reasoning on. No secret leaked.
     if (path === "/api/ai-selftest") {
       if (!CEREBRAS_KEY) return send(res, 200, "application/json", JSON.stringify({ ok: false, keyPresent: false, error: "no cerebras-api-key in env" }));
+      const stream = qs.get("mode") === "stream";
+      const think = qs.get("think") === "1";
       const t0 = Date.now();
-      const payload = JSON.stringify({ model: CEREBRAS_MODEL, messages: [{ role: "user", content: "Reply with the single word: pong" }], max_tokens: 12, stream: false });
+      const reqBody = { model: CEREBRAS_MODEL, messages: [{ role: "user", content: "In ONE short sentence, playfully roast JavaScript developers." }], max_tokens: 200, stream };
+      if (!think) reqBody.chat_template_kwargs = { enable_thinking: false };
+      const payload = JSON.stringify(reqBody);
       const r = await new Promise((resolve) => {
+        let content = "", reasoning = "", ttfc = 0, status = 0, errBody = "";
         const rq = https.request({ hostname: "api.cerebras.ai", path: "/v1/chat/completions", method: "POST",
-          headers: { "Authorization": "Bearer " + CEREBRAS_KEY, "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) }, timeout: 18000 },
-          (rr) => { let b = ""; rr.on("data", (c) => (b += c)); rr.on("end", () => resolve({ status: rr.statusCode, body: b })); });
-        rq.on("error", (e) => resolve({ status: 0, body: String(e) }));
-        rq.on("timeout", () => { rq.destroy(); resolve({ status: 0, body: "timeout" }); });
+          headers: { "Authorization": "Bearer " + CEREBRAS_KEY, "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) }, timeout: 20000 },
+          (rr) => {
+            status = rr.statusCode; rr.setEncoding("utf8");
+            if (!stream || status !== 200) { let b = ""; rr.on("data", (c) => (b += c)); rr.on("end", () => { errBody = b; try { const j = JSON.parse(b); content = j.choices[0].message.content || ""; reasoning = j.choices[0].message.reasoning_content || ""; } catch (e) {} resolve({ status, content, reasoning, ttfc, errBody: status !== 200 ? b.slice(0, 220) : undefined }); }); return; }
+            let buf = ""; rr.on("data", (chunk) => { buf += chunk; let i; while ((i = buf.indexOf("\n")) >= 0) { const ln = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (!ln.startsWith("data:")) continue; const d = ln.slice(5).trim(); if (d === "[DONE]") continue; let j; try { j = JSON.parse(d); } catch (e) { continue; } const dc = j.choices && j.choices[0] && j.choices[0].delta || {}; if (dc.content) { if (!ttfc) ttfc = Date.now() - t0; content += dc.content; } if (dc.reasoning_content) reasoning += dc.reasoning_content; } });
+            rr.on("end", () => resolve({ status, content, reasoning, ttfc }));
+          });
+        rq.on("error", (e) => resolve({ status: 0, content: "", reasoning: "", errBody: String(e) }));
+        rq.on("timeout", () => { rq.destroy(); resolve({ status: 0, content: "", reasoning: "", errBody: "timeout" }); });
         rq.write(payload); rq.end();
       });
-      let sample = null; try { sample = JSON.parse(r.body).choices[0].message.content; } catch (e) {}
       return send(res, 200, "application/json", JSON.stringify({
-        ok: r.status === 200, status: r.status, model: CEREBRAS_MODEL, keyPresent: true, keyLen: CEREBRAS_KEY.length,
-        ms: Date.now() - t0, sample, body: r.status !== 200 ? String(r.body).slice(0, 220) : undefined,
+        ok: r.status === 200 && !!r.content, status: r.status, model: CEREBRAS_MODEL, mode: stream ? "stream" : "chat",
+        thinkDisabled: !think, ttfcMs: r.ttfc || null, totalMs: Date.now() - t0,
+        contentChars: (r.content || "").length, reasoningChars: (r.reasoning || "").length,
+        sample: (r.content || "").slice(0, 180), errBody: r.errBody,
       }));
     }
 

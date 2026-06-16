@@ -243,9 +243,9 @@ function cerebrasRoastStream(res, messages) {
   if (!CEREBRAS_KEY) { sse({ fallback: true }); sse({ done: true }); return res.end(); }
 
   const payload = JSON.stringify({
-    model: CEREBRAS_MODEL, messages, stream: true, temperature: 0.9, max_tokens: 800,
-    // GLM-4.7 is a reasoning model; turn thinking OFF so the roast streams instantly.
-    chat_template_kwargs: { enable_thinking: false },
+    model: CEREBRAS_MODEL, messages, stream: true, temperature: 0.9, max_tokens: 400,
+    // GLM-4.7 is a reasoning model; "none" disables thinking so the roast streams instantly.
+    reasoning_effort: "none",
   });
   let anyEmit = false, finished = false, rawBuf = "", emitted = 0, buf = "";
   const finish = (fb) => {
@@ -585,7 +585,7 @@ const server = http.createServer(async (req, res) => {
       const think = qs.get("think") === "1";
       const t0 = Date.now();
       const reqBody = { model: CEREBRAS_MODEL, messages: [{ role: "user", content: "In ONE short sentence, playfully roast JavaScript developers." }], max_tokens: 200, stream };
-      if (!think) reqBody.chat_template_kwargs = { enable_thinking: false };
+      if (!think) reqBody.reasoning_effort = "none";
       const payload = JSON.stringify(reqBody);
       const r = await new Promise((resolve) => {
         let content = "", reasoning = "", ttfc = 0, status = 0, errBody = "";

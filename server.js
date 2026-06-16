@@ -403,6 +403,8 @@ function renderRoast(handle, data, origin) {
  .aibadge{font-family:Roboto Mono,monospace;font-size:.6rem;font-weight:500;color:var(--fire);border:1px solid var(--fire);
    border-radius:6px;padding:.15em .5em;letter-spacing:.04em;text-transform:none}
  .aibadge.fb{color:var(--muted);border-color:var(--line)}
+ .aibadge .cere{height:1.2em;width:1.2em;vertical-align:-.25em;margin-right:.3em}
+ .aibadge{display:inline-flex;align-items:center}
  .rstream{font-size:clamp(1.02rem,2.3vw,1.22rem);line-height:1.62;color:#e7eeff;min-height:5.2em}
  .rstream .w{display:inline-block;opacity:0;transform:translateY(3px);animation:fin .28s ease forwards}
  @keyframes fin{to{opacity:1;transform:none}}
@@ -432,7 +434,7 @@ function renderRoast(handle, data, origin) {
     </div>
     ${langBars(s.topLangs)}
     <div class="roast">
-      <h3>🔥 The roast <span class="aibadge" id="aibadge">✦ live · GLM-4.7</span></h3>
+      <h3>🔥 The roast <span class="aibadge" id="aibadge"><svg class="cere" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path clip-rule="evenodd" d="M14.121 2.701a9.299 9.299 0 000 18.598V22.7c-5.91 0-10.7-4.791-10.7-10.701S8.21 1.299 14.12 1.299V2.7zm4.752 3.677A7.353 7.353 0 109.42 17.643l-.901 1.074a8.754 8.754 0 01-1.08-12.334 8.755 8.755 0 0112.335-1.08l-.901 1.075zm-2.255.844a5.407 5.407 0 00-5.048 9.563l-.656 1.24a6.81 6.81 0 016.358-12.043l-.654 1.24zM14.12 8.539a3.46 3.46 0 100 6.922v1.402a4.863 4.863 0 010-9.726v1.402z" fill="#F15A29" fill-rule="evenodd"></path><path d="M15.407 10.836a2.24 2.24 0 00-.51-.409 1.084 1.084 0 00-.544-.152c-.255 0-.483.047-.684.14a1.58 1.58 0 00-.84.912c-.074.203-.11.416-.11.631 0 .218.036.43.11.631a1.594 1.594 0 00.84.913c.2.093.43.14.684.14.216 0 .417-.046.602-.135.188-.09.35-.225.475-.392l.928 1.006c-.14.14-.3.261-.482.363a3.367 3.367 0 01-1.083.38c-.17.026-.317.04-.44.04a3.315 3.315 0 01-1.182-.21 2.825 2.825 0 01-.961-.597 2.816 2.816 0 01-.644-.929 2.987 2.987 0 01-.238-1.21c0-.444.08-.847.238-1.21.15-.35.368-.666.643-.929.278-.261.605-.464.962-.596a3.315 3.315 0 011.182-.21c.355 0 .712.068 1.072.204.361.138.685.36.944.649l-.962.97z" fill="currentColor"></path></svg>Real-time AI · powered by Cerebras AI</span></h3>
       <div class="rstream" id="roast"></div>
       <noscript>${body}</noscript>
     </div>

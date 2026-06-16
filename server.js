@@ -18,6 +18,11 @@ const CACHE_TTL = 10 * 60 * 1000; // 10 min
 const CEREBRAS_KEY = process.env["cerebras-api-key"] || process.env.CEREBRAS_API_KEY || "";
 const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || "zai-glm-4.7";
 
+// Top GitHub contributors leaderboard (#28) — baked at build time from the
+// gayanvoice/top-github-users dataset. {countries:[...], byCountry:{label:[...]}}.
+const COMMITTERS = require("./committers-data.js");
+const COMMITTERS_JSON = JSON.stringify(COMMITTERS);
+
 /** @type {Map<string,{at:number,data:any}>} */
 const cache = new Map();
 const wall = []; // recently roasted {login, name, avatar, headline, at}
@@ -351,10 +356,95 @@ function renderHome(msg) {
   </form>
   <p class="examples">Try: <a href="/u/torvalds">@torvalds</a><a href="/u/gaearon">@gaearon</a><a href="/u/octocat">@octocat</a></p>
   <p class="links">🧱 <a href="/wall">the wall of roasts →</a> · real GitHub data · no logins stored</p>
+
+  <section class="board">
+    <div class="bhead">
+      <h2>🌍 Top GitHub contributors <span class="bhint">— click anyone to roast them live</span></h2>
+      <div class="bctrl">
+        <label for="country">Country</label>
+        <select id="country" aria-label="Filter by country"></select>
+        <input id="bsearch" placeholder="filter names…" autocomplete="off"/>
+      </div>
+    </div>
+    <div class="btable-wrap">
+      <table class="btable">
+        <thead><tr><th>#</th><th>Developer</th><th class="ct">Country</th><th class="num">Contributions</th></tr></thead>
+        <tbody id="brows"><tr><td colspan="4" class="bloading">loading the global leaderboard…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="bsrc">Data: <a href="https://github.com/gayanvoice/top-github-users" target="_blank" rel="noopener">top-github-users</a> (by public contributions) · like <a href="https://committers.top" target="_blank" rel="noopener">committers.top</a>. Tap a name → live Cerebras roast.</p>
+  </section>
 </div>
+<style>
+ .board{margin-top:2.4rem;max-width:920px}
+ .bhead{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
+ .bhead h2{font-family:Overpass;font-weight:900;font-size:clamp(1.3rem,3.5vw,1.9rem);color:#fff;line-height:1.1}
+ .bhint{font-family:Roboto,sans-serif;font-weight:400;font-size:.82rem;color:var(--muted)}
+ .bctrl{display:flex;gap:.5rem;align-items:center}
+ .bctrl label{font-size:.78rem;color:var(--muted)}
+ #country,#bsearch{background:#070d20;border:1px solid #2a3a66;border-radius:9px;color:var(--ink);font-size:.9rem;padding:.5rem .6rem;outline:none}
+ #country:focus,#bsearch:focus{border-color:var(--blue-b)}
+ #bsearch{width:8.5rem}
+ .btable-wrap{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:rgba(255,255,255,.02)}
+ .btable{width:100%;border-collapse:collapse;font-size:.92rem}
+ .btable thead th{text-align:left;font-family:Overpass;font-weight:800;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;
+   color:var(--muted);padding:.7rem .9rem;border-bottom:1px solid var(--line);background:rgba(47,107,255,.06)}
+ .btable th.num,.btable td.num{text-align:right;font-variant-numeric:tabular-nums}
+ .btable tbody tr{border-bottom:1px solid rgba(120,160,255,.07);cursor:pointer;transition:background .12s}
+ .btable tbody tr:last-child{border-bottom:none}
+ .btable tbody tr:hover{background:rgba(47,107,255,.12)}
+ .btable td{padding:.5rem .9rem;vertical-align:middle}
+ .btable td.rank{color:var(--muted);font-family:Overpass;font-weight:800;width:2.5rem}
+ .dev{display:flex;align-items:center;gap:.65rem;text-decoration:none;color:#fff}
+ .dev img{width:30px;height:30px;border-radius:50%;background:#0a1228;border:1px solid var(--line);flex:none}
+ .dev .nm{font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:13rem}
+ .dev .hd{color:var(--blue-b);font-family:Roboto Mono,monospace;font-size:.78rem}
+ .btable td.ct{color:var(--muted);font-size:.84rem;white-space:nowrap}
+ .btable td.num{color:var(--cyan);font-weight:700}
+ .btable .go{color:var(--fire);font-size:.78rem;opacity:0;white-space:nowrap}
+ .btable tr:hover .go{opacity:1}
+ .bloading{padding:1.4rem;text-align:center;color:var(--muted)}
+ .bsrc{margin-top:.8rem;font-size:.76rem;color:#6f86a3}.bsrc a{color:var(--blue-b);text-decoration:none}
+ @media(max-width:600px){.dev .nm{max-width:8rem}.btable td.ct{display:none}.btable th.ct{display:none}}
+</style>
 <script>
  function go(e){e.preventDefault();var h=document.getElementById('h').value.trim().replace(/^@/,'');
    if(h)location.href='/u/'+encodeURIComponent(h);return false;}
+ (function(){
+   var sel=document.getElementById('country'), q=document.getElementById('bsearch'), body=document.getElementById('brows');
+   var DATA=null, current='Global';
+   function fmt(n){return (n||0).toLocaleString('en-US');}
+   function render(){
+     var rows=(DATA.byCountry[current]||[]); var term=(q.value||'').trim().toLowerCase();
+     if(term) rows=rows.filter(function(u){return (u.login+' '+(u.name||'')).toLowerCase().indexOf(term)>=0;});
+     body.textContent='';
+     if(!rows.length){var tr=document.createElement('tr');var td=document.createElement('td');td.colSpan=4;td.className='bloading';td.textContent='no matches';tr.appendChild(td);body.appendChild(tr);return;}
+     rows.forEach(function(u,i){
+       var tr=document.createElement('tr');
+       tr.addEventListener('click',function(){location.href='/u/'+encodeURIComponent(u.login);});
+       var rk=document.createElement('td');rk.className='rank';rk.textContent=(i+1);tr.appendChild(rk);
+       var dt=document.createElement('td');
+       var a=document.createElement('a');a.className='dev';a.href='/u/'+encodeURIComponent(u.login);
+       var img=document.createElement('img');img.loading='lazy';img.alt='';img.referrerPolicy='no-referrer';if(u.avatar)img.src=u.avatar;a.appendChild(img);
+       var box=document.createElement('div');
+       var nm=document.createElement('div');nm.className='nm';nm.textContent=u.name||u.login;box.appendChild(nm);
+       var hd=document.createElement('div');hd.className='hd';hd.textContent='@'+u.login;box.appendChild(hd);
+       a.appendChild(box);dt.appendChild(a);tr.appendChild(dt);
+       var ct=document.createElement('td');ct.className='ct';ct.textContent=u.country||current;tr.appendChild(ct);
+       var nu=document.createElement('td');nu.className='num';nu.textContent=fmt(u.c);
+       var go=document.createElement('span');go.className='go';go.textContent='  roast →';
+       tr.appendChild(nu);
+       body.appendChild(tr);
+     });
+   }
+   fetch('/api/committers').then(function(r){return r.json();}).then(function(d){
+     DATA=d;
+     d.countries.forEach(function(c){var o=document.createElement('option');o.value=c;o.textContent=c;sel.appendChild(o);});
+     sel.value='Global'; render();
+     sel.addEventListener('change',function(){current=sel.value;q.value='';render();});
+     q.addEventListener('input',render);
+   }).catch(function(){body.innerHTML='<tr><td colspan=4 class=bloading>leaderboard unavailable</td></tr>';});
+ })();
 </script></body></html>`;
 }
 
@@ -558,6 +648,7 @@ const server = http.createServer(async (req, res) => {
     const qs = u.indexOf("?") >= 0 ? new URLSearchParams(u.slice(u.indexOf("?") + 1)) : new URLSearchParams();
 
     if (path === "/healthz") return send(res, 200, "text/plain", "ok");
+    if (path === "/api/committers") return send(res, 200, "application/json", COMMITTERS_JSON);
     if (path === "/") return send(res, 200, "text/html; charset=utf-8", renderHome(""));
     if (path === "/wall") return send(res, 200, "text/html; charset=utf-8", renderWall());
 

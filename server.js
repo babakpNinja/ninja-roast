@@ -404,7 +404,7 @@ function renderRoast(handle, data, origin) {
    border-radius:6px;padding:.15em .5em;letter-spacing:.04em;text-transform:none}
  .aibadge.fb{color:var(--muted);border-color:var(--line)}
  .rstream{font-size:clamp(1.02rem,2.3vw,1.22rem);line-height:1.62;color:#e7eeff;min-height:5.2em}
- .rstream .w{display:inline-block;opacity:0;transform:translateY(4px);animation:fin .45s ease forwards}
+ .rstream .w{display:inline-block;opacity:0;transform:translateY(3px);animation:fin .28s ease forwards}
  @keyframes fin{to{opacity:1;transform:none}}
  .rstream .cursor{display:inline-block;width:.55ch;color:var(--fire);animation:bl .8s steps(1) infinite}
  @keyframes bl{50%{opacity:0}}
@@ -453,33 +453,40 @@ function renderRoast(handle, data, origin) {
  var HANDLE=${JSON.stringify(u.login)};
  var FALLBACK=${JSON.stringify(fbText).replace(/</g, "\\u003c")};
  var box=document.getElementById('roast'), badge=document.getElementById('aibadge');
- var queue=[], done=false, started=false, gotAI=false;
+ var done=false, started=false, gotAI=false, fellBack=false, fbTimer=null;
  var cursor=document.createElement('span'); cursor.className='cursor'; cursor.textContent='▌';
  box.appendChild(cursor);
- function pushText(t){ var p=t.split(/(\\s+)/); for(var i=0;i<p.length;i++){ if(p[i]!=='') queue.push(p[i]); } }
- function reveal(){
-   if(queue.length){
-     var w=queue.shift();
+ // Append text the INSTANT it arrives — display speed == Cerebras stream speed.
+ // No queue, no per-word timer. The fade-in is a pure CSS per-span effect (concurrent).
+ function appendText(t){
+   var p=t.split(/(\\s+)/);
+   for(var i=0;i<p.length;i++){
+     var w=p[i]; if(w==='') continue;
      if(/^\\s+$/.test(w)){ box.insertBefore(document.createTextNode(w), cursor); }
      else { var s=document.createElement('span'); s.className='w'; s.textContent=w; box.insertBefore(s, cursor); }
-     box.scrollIntoView&&0; setTimeout(reveal, Math.min(75, 22+w.length*7));
-   } else if(done){ if(cursor.parentNode) cursor.remove(); }
-   else { setTimeout(reveal, 55); }
+   }
  }
- reveal();
- function useFallback(){ if(started&&gotAI) return; started=true; gotAI=false;
+ function finish(){ if(done) return; done=true; if(cursor.parentNode) cursor.remove(); }
+ // Fallback (rule-based, local text): reveal FAST in small chunks (~done in <0.5s).
+ function useFallback(){
+   if(gotAI || fellBack) return; fellBack=true; started=true;
    badge.textContent='✦ instant roast'; badge.className='aibadge fb';
-   queue=[]; while(box.firstChild) box.removeChild(box.firstChild); box.appendChild(cursor);
-   pushText(FALLBACK); done=true; }
+   while(box.firstChild) box.removeChild(box.firstChild); box.appendChild(cursor);
+   var words=FALLBACK.split(/(\\s+)/).filter(function(x){return x!=='';}), i=0;
+   fbTimer=setInterval(function(){
+     if(i>=words.length){ clearInterval(fbTimer); finish(); return; }
+     for(var k=0;k<4 && i<words.length;k++,i++){ appendText(words[i]); }
+   }, 16);
+ }
  var es=null;
  try { es=new EventSource('/api/roast-stream?u='+encodeURIComponent(HANDLE)); } catch(e){ useFallback(); }
  if(es){
    es.onmessage=function(ev){ var d; try{ d=JSON.parse(ev.data); }catch(e){ return; }
-     if(d.fallback){ useFallback(); es.close(); return; }
-     if(d.done){ done=true; es.close(); return; }
-     if(typeof d.v==='string'){ started=true; gotAI=true; pushText(d.v); }
+     if(d.fallback){ es.close(); useFallback(); return; }
+     if(d.done){ es.close(); finish(); return; }
+     if(typeof d.v==='string'){ started=true; gotAI=true; appendText(d.v); }
    };
-   es.onerror=function(){ try{es.close();}catch(e){} if(!gotAI){ useFallback(); } else { done=true; } };
+   es.onerror=function(){ try{es.close();}catch(e){} if(!gotAI){ useFallback(); } else { finish(); } };
  }
 })();
 </script></body></html>`;

@@ -1,0 +1,9 @@
+{
+  "name": "ninja-roast",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Roast my GitHub — real-data, rule-based roast generator (NinjaTech demo app)",
+  "main": "server.js",
+  "scripts": { "start": "node server.js" },
+  "engines": { "node": ">=18" }
+}

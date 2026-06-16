@@ -12,6 +12,12 @@ const PORT = process.env.PORT || 3000;
 const TOKEN = process.env.GITHUB_TOKEN || "";
 const CACHE_TTL = 10 * 60 * 1000; // 10 min
 
+// Cerebras GLM-4.7 — AI-powered roast (streamed). Key lives in Railway env on the
+// ninja-roast service as `cerebras-api-key` (hyphenated → bracket access).
+// If unset/unreachable, the app silently falls back to the rule-based roast.
+const CEREBRAS_KEY = process.env["cerebras-api-key"] || process.env.CEREBRAS_API_KEY || "";
+const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || "zai-glm-4.7";
+
 /** @type {Map<string,{at:number,data:any}>} */
 const cache = new Map();
 const wall = []; // recently roasted {login, name, avatar, headline, at}
@@ -195,6 +201,99 @@ function buildRoast(login, s) {
   return { opener, lines: picked, closer };
 }
 
+// Plain-text fallback paragraph from the rule-based roast (strip md markers).
+function fallbackText(login, s) {
+  const r = buildRoast(login, s);
+  return [r.opener, ...r.lines, r.closer].join(" ").replace(/\*\*/g, "").replace(/[*`]/g, "");
+}
+
+// Build the Cerebras chat messages from the REAL GitHub stats so the roast is
+// specific + accurate to this person (not generic).
+function buildPromptMessages(login, name, s) {
+  const langs = s.topLangs.map((l) => `${l[0]} (${l[1]})`).join(", ") || "none detected";
+  const facts = [
+    `handle: @${login}${name && name !== login ? ` (real name: ${name})` : ""}`,
+    `public repos: ${s.publicRepos} (${s.owned} original, ${s.forks} forked)`,
+    `total stars across all repos: ${s.totalStars}`,
+    `followers: ${s.followers}, following: ${s.following}`,
+    `top languages: ${langs}`,
+    s.topRepo ? `most-starred repo: "${s.topRepo.name}" (${s.topRepo.stars} stars)` : `no standout repo`,
+    `account age: ${s.accountYears.toFixed(1)} years`,
+    s.lastPush ? `last pushed: ${ago(s.lastPush)}` : `never pushed any code`,
+    `public gists: ${s.publicGists}`,
+    s.hasBio ? `bio: "${s.bio.slice(0, 140)}"` : `no bio set`,
+    s.lazyNames.length ? `lazily-named repos: ${s.lazyNames.slice(0, 3).join(", ")}` : null,
+    s.emptyish ? `empty/near-empty repos: ${s.emptyish}` : null,
+  ].filter(Boolean).map((x) => "- " + x).join("\n");
+  const system =
+    "You are a razor-sharp, good-natured stand-up comedian who roasts software developers based ONLY on " +
+    "their real GitHub stats. Write ONE paragraph, 60-90 words. Be specific to THIS person's actual numbers, " +
+    "clever, and genuinely funny. Punch at coding habits and choices — never at the person, their identity, " +
+    "gender, race, or looks. Keep it playful and land on a slightly warm final beat. Output ONLY the roast " +
+    "paragraph: no preamble, no title, no quotes, no markdown, and never reveal your reasoning or thinking.";
+  const user = "Roast this developer using their real GitHub data:\n" + facts;
+  return [{ role: "system", content: system }, { role: "user", content: user }];
+}
+
+// Stream a GLM-4.7 roast to an open SSE response. Emits `data:{"v":"..."}` per
+// chunk, `data:{"fallback":true}` if AI is unavailable/empty, then
+// `data:{"done":true}`. Strips <think> reasoning; never throws.
+function cerebrasRoastStream(res, messages) {
+  const sse = (o) => { try { res.write("data: " + JSON.stringify(o) + "\n\n"); } catch (e) {} };
+  if (!CEREBRAS_KEY) { sse({ fallback: true }); sse({ done: true }); return res.end(); }
+
+  const payload = JSON.stringify({
+    model: CEREBRAS_MODEL, messages, stream: true, temperature: 0.9, max_tokens: 800,
+  });
+  let anyEmit = false, finished = false, rawBuf = "", emitted = 0, buf = "";
+  const finish = (fb) => {
+    if (finished) return; finished = true; clearTimeout(firstTO);
+    if (fb && !anyEmit) sse({ fallback: true });
+    sse({ done: true }); try { res.end(); } catch (e) {}
+  };
+
+  const req = https.request({
+    hostname: "api.cerebras.ai", path: "/v1/chat/completions", method: "POST",
+    headers: {
+      "Authorization": "Bearer " + CEREBRAS_KEY, "Content-Type": "application/json",
+      "Content-Length": Buffer.byteLength(payload),
+    }, timeout: 20000,
+  }, (r) => {
+    if (r.statusCode !== 200) {
+      let e = ""; r.on("data", (c) => (e += c));
+      r.on("end", () => { console.log("cerebras non-200:", r.statusCode, String(e).slice(0, 160)); finish(true); });
+      return;
+    }
+    r.setEncoding("utf8");
+    r.on("data", (chunk) => {
+      buf += chunk; let idx;
+      while ((idx = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, idx).trim(); buf = buf.slice(idx + 1);
+        if (!line.startsWith("data:")) continue;
+        const d = line.slice(5).trim();
+        if (d === "[DONE]") continue;
+        let j; try { j = JSON.parse(d); } catch (e) { continue; }
+        const c = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+        if (typeof c !== "string" || !c) continue;
+        rawBuf += c;
+        // strip complete + in-progress <think>…</think> so reasoning never streams
+        const clean = rawBuf.replace(/<think>[\s\S]*?<\/think>/g, "").replace(/<think>[\s\S]*$/, "");
+        if (clean.length > emitted) {
+          const out = clean.slice(emitted); emitted = clean.length;
+          if (out) { anyEmit = true; clearTimeout(firstTO); sse({ v: out }); }
+        }
+      }
+    });
+    r.on("end", () => finish(true));
+    r.on("error", () => finish(true));
+  });
+  // If no displayable token within 9s, give up and fall back.
+  const firstTO = setTimeout(() => { if (!anyEmit) { try { req.destroy(); } catch (e) {} finish(true); } }, 9000);
+  req.on("error", () => finish(true));
+  req.on("timeout", () => { try { req.destroy(); } catch (e) {} finish(true); });
+  req.write(payload); req.end();
+}
+
 // crude inline markdown → safe HTML (**bold**, `code`, *em*) on ALREADY-ESCAPED text
 function mdInline(safe) {
   return safe
@@ -272,6 +371,7 @@ function renderRoast(handle, data, origin) {
   const body = [roast.opener, ...roast.lines, roast.closer]
     .map((ln) => `<p class="rl">${mdInline(esc(ln))}</p>`)
     .join("");
+  const fbText = fallbackText(u.login, s); // plain-text safety net (rule-based)
   const shareUrl = `${origin}/u/${encodeURIComponent(u.login)}`;
   return `${HEAD(`Roasting @${u.login} · Roast my GitHub`, `A data-driven roast of @${u.login} — ${nfmt(s.publicRepos)} repos, ${nfmt(s.totalStars)} stars.`)}
 <style>
@@ -297,6 +397,15 @@ function renderRoast(handle, data, origin) {
  .rl{font-size:clamp(1rem,2.2vw,1.18rem);line-height:1.55;margin-bottom:.85rem;color:#e7eeff}
  .rl b{color:#fff}.rl code{font-family:Roboto Mono,monospace;background:rgba(47,107,255,.16);padding:.05em .4em;border-radius:5px;font-size:.9em;color:#cfe0ff}
  .rl:first-child{color:#fff;font-weight:500}.rl:last-child{color:var(--win)}
+ .roast h3{display:flex;align-items:center;gap:.5em;flex-wrap:wrap}
+ .aibadge{font-family:Roboto Mono,monospace;font-size:.6rem;font-weight:500;color:var(--fire);border:1px solid var(--fire);
+   border-radius:6px;padding:.15em .5em;letter-spacing:.04em;text-transform:none}
+ .aibadge.fb{color:var(--muted);border-color:var(--line)}
+ .rstream{font-size:clamp(1.02rem,2.3vw,1.22rem);line-height:1.62;color:#e7eeff;min-height:5.2em}
+ .rstream .w{display:inline-block;opacity:0;transform:translateY(4px);animation:fin .45s ease forwards}
+ @keyframes fin{to{opacity:1;transform:none}}
+ .rstream .cursor{display:inline-block;width:.55ch;color:var(--fire);animation:bl .8s steps(1) infinite}
+ @keyframes bl{50%{opacity:0}}
  .actions{display:flex;gap:.7rem;flex-wrap:wrap;margin-top:1.6rem}
  .btn{font-family:Overpass;font-weight:800;font-size:.92rem;border-radius:11px;padding:.7rem 1.1rem;cursor:pointer;border:1px solid var(--line);text-decoration:none;color:#fff;background:rgba(47,107,255,.14)}
  .btn.fire{color:#05070f;background:linear-gradient(100deg,var(--fire),#ffd24d);border-color:transparent}
@@ -321,8 +430,9 @@ function renderRoast(handle, data, origin) {
     </div>
     ${langBars(s.topLangs)}
     <div class="roast">
-      <h3>🔥 The roast</h3>
-      ${body}
+      <h3>🔥 The roast <span class="aibadge" id="aibadge">✦ live · GLM-4.7</span></h3>
+      <div class="rstream" id="roast"></div>
+      <noscript>${body}</noscript>
     </div>
     <div class="actions">
       <a class="btn fire" href="/">Roast another 🔥</a>
@@ -335,6 +445,41 @@ function renderRoast(handle, data, origin) {
 <script>
  function copy(){navigator.clipboard.writeText(${JSON.stringify(shareUrl)}).then(function(){
    event.target.textContent='✓ copied!';});}
+</script>
+<script>
+(function(){
+ var HANDLE=${JSON.stringify(u.login)};
+ var FALLBACK=${JSON.stringify(fbText).replace(/</g, "\\u003c")};
+ var box=document.getElementById('roast'), badge=document.getElementById('aibadge');
+ var queue=[], done=false, started=false, gotAI=false;
+ var cursor=document.createElement('span'); cursor.className='cursor'; cursor.textContent='▌';
+ box.appendChild(cursor);
+ function pushText(t){ var p=t.split(/(\\s+)/); for(var i=0;i<p.length;i++){ if(p[i]!=='') queue.push(p[i]); } }
+ function reveal(){
+   if(queue.length){
+     var w=queue.shift();
+     if(/^\\s+$/.test(w)){ box.insertBefore(document.createTextNode(w), cursor); }
+     else { var s=document.createElement('span'); s.className='w'; s.textContent=w; box.insertBefore(s, cursor); }
+     box.scrollIntoView&&0; setTimeout(reveal, Math.min(75, 22+w.length*7));
+   } else if(done){ if(cursor.parentNode) cursor.remove(); }
+   else { setTimeout(reveal, 55); }
+ }
+ reveal();
+ function useFallback(){ if(started&&gotAI) return; started=true; gotAI=false;
+   badge.textContent='✦ instant roast'; badge.className='aibadge fb';
+   queue=[]; while(box.firstChild) box.removeChild(box.firstChild); box.appendChild(cursor);
+   pushText(FALLBACK); done=true; }
+ var es=null;
+ try { es=new EventSource('/api/roast-stream?u='+encodeURIComponent(HANDLE)); } catch(e){ useFallback(); }
+ if(es){
+   es.onmessage=function(ev){ var d; try{ d=JSON.parse(ev.data); }catch(e){ return; }
+     if(d.fallback){ useFallback(); es.close(); return; }
+     if(d.done){ done=true; es.close(); return; }
+     if(typeof d.v==='string'){ started=true; gotAI=true; pushText(d.v); }
+   };
+   es.onerror=function(){ try{es.close();}catch(e){} if(!gotAI){ useFallback(); } else { done=true; } };
+ }
+})();
 </script></body></html>`;
 }
 
@@ -412,6 +557,42 @@ const server = http.createServer(async (req, res) => {
       if (data.error) return send(res, data.error === "notfound" ? 404 : 503, "application/json", JSON.stringify({ ok: false, error: data.error }));
       const roast = buildRoast(data.user.login, data.stats);
       return send(res, 200, "application/json", JSON.stringify({ ok: true, login: data.user.login, stats: data.stats, roast }));
+    }
+
+    // Live AI roast over SSE (GLM-4.7 on Cerebras) — falls back to rule-based.
+    if (path === "/api/roast-stream") {
+      const h = (qs.get("u") || "").replace(/^@/, "").trim();
+      res.writeHead(200, {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
+      });
+      res.write(":ok\n\n");
+      if (!validHandle(h)) { res.write('data: {"fallback":true}\n\n'); res.write('data: {"done":true}\n\n'); return res.end(); }
+      const data = await fetchProfile(h);
+      if (data.error) { res.write('data: {"fallback":true}\n\n'); res.write('data: {"done":true}\n\n'); return res.end(); }
+      return cerebrasRoastStream(res, buildPromptMessages(data.user.login, data.user.name, data.stats));
+    }
+
+    // Probe whether Cerebras is reachable FROM THIS RUNTIME (Railway). No secret leaked.
+    if (path === "/api/ai-selftest") {
+      if (!CEREBRAS_KEY) return send(res, 200, "application/json", JSON.stringify({ ok: false, keyPresent: false, error: "no cerebras-api-key in env" }));
+      const t0 = Date.now();
+      const payload = JSON.stringify({ model: CEREBRAS_MODEL, messages: [{ role: "user", content: "Reply with the single word: pong" }], max_tokens: 12, stream: false });
+      const r = await new Promise((resolve) => {
+        const rq = https.request({ hostname: "api.cerebras.ai", path: "/v1/chat/completions", method: "POST",
+          headers: { "Authorization": "Bearer " + CEREBRAS_KEY, "Content-Type": "application/json", "Content-Length": Buffer.byteLength(payload) }, timeout: 18000 },
+          (rr) => { let b = ""; rr.on("data", (c) => (b += c)); rr.on("end", () => resolve({ status: rr.statusCode, body: b })); });
+        rq.on("error", (e) => resolve({ status: 0, body: String(e) }));
+        rq.on("timeout", () => { rq.destroy(); resolve({ status: 0, body: "timeout" }); });
+        rq.write(payload); rq.end();
+      });
+      let sample = null; try { sample = JSON.parse(r.body).choices[0].message.content; } catch (e) {}
+      return send(res, 200, "application/json", JSON.stringify({
+        ok: r.status === 200, status: r.status, model: CEREBRAS_MODEL, keyPresent: true, keyLen: CEREBRAS_KEY.length,
+        ms: Date.now() - t0, sample, body: r.status !== 200 ? String(r.body).slice(0, 220) : undefined,
+      }));
     }
 
     if (path.startsWith("/u/")) {

@@ -351,7 +351,7 @@ function renderHome(msg) {
   <p class="sub">Type any GitHub handle. We pull the real public profile + repos and write a roast it probably deserves. Built live by an AI employee.</p>
   ${msg ? `<p class="sub" style="color:var(--fire)">${esc(msg)}</p>` : ""}
   <form id="f" onsubmit="return go(event)">
-    <label class="at"><span>@</span><input id="h" placeholder="octocat" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="39"/></label>
+    <label class="at"><span>@</span><input id="h" value="torvalds" placeholder="octocat" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="39"/></label>
     <button type="submit">Roast 🔥</button>
   </form>
   <p class="examples">Try: <a href="/u/torvalds">@torvalds</a><a href="/u/gaearon">@gaearon</a><a href="/u/octocat">@octocat</a></p>

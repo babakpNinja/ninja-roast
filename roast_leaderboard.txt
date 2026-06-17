@@ -1,0 +1,457 @@
+NINJA 🥷
+
+FOUNDRY LIVE · GITHUB SF
+
+Roast my GitHub 🔥
+
+Type any GitHub handle. We pull the real public profile + repos and write a roast it probably deserves. Built live by an AI employee.
+
+@
+Roast 🔥
+
+Try: @torvalds@gaearon@octocat
+
+🧱 the wall of roasts → · real GitHub data · no logins stored
+
+🌍 Top GitHub contributors — click anyone to roast them live
+Country
+Global
+Argentina
+Australia
+Austria
+Bangladesh
+Brazil
+Canada
+China
+Finland
+France
+Germany
+India
+Indonesia
+Ireland
+Israel
+Italy
+Japan
+Mexico
+Netherlands
+Nigeria
+Norway
+Pakistan
+Philippines
+Poland
+Russia
+Singapore
+South Africa
+South Korea
+Spain
+Sweden
+Switzerland
+Taiwan
+Turkey
+Ukraine
+United Kingdom
+United States
+Vietnam
+#	DEVELOPER	COUNTRY	CONTRIBUTIONS
+1	
+Jay Patrick Cano
+@0x3EF8
+	Philippines	24,940,373
+2	
+Farhan Reza
+@farhan7reza7
+	India	502,251
+3	
+Felix Yan
+@felixonmars
+	China	282,617
+4	
+David Nguyen
+@hoangsvit
+	Vietnam	194,096
+5	
+Febrianto Bagus Setiawan
+@Setiawan007
+	Indonesia	183,076
+6	
+John Paul Caigas
+@Mra1k3r0
+	Philippines	147,614
+7	
+Sufiyan Shahid
+@SufiyanShahidDev
+	Pakistan	140,374
+8	
+Turgut Akın
+@komutan234
+	Turkey	112,812
+9	
+Nehal Atiq
+@NehalAtiq-dev
+	Pakistan	108,940
+10	
+Enes Can Işık
+@themiralay
+	Turkey	104,908
+11	
+Frank Richard Hall
+@frankrichardhall
+	Vietnam	100,179
+12	
+Hors
+@horsicq
+	Germany	76,825
+13	
+taqin
+@fdciabdul
+	Indonesia	74,814
+14	
+Bocaletto Luca
+@bocaletto-luca
+	Italy	71,396
+15	
+Noah Gift
+@noahgift
+	Spain	56,979
+16	
+布客飞龙
+@wizardforcel
+	China	54,580
+17	
+ARHAM
+@arhammaqsood-dev
+	Pakistan	54,025
+18	
+Yegor Bugayenko
+@yegor256
+	China	47,604
+19	
+Peter Steinberger
+@steipete
+	Austria	46,535
+20	
+XnuxersXploitXen
+@Xnuvers007
+	Indonesia	44,064
+21	
+Stefan Hagen
+@sthagen
+	Switzerland	39,861
+22	
+Jason2866
+@Jason2866
+	Germany	39,810
+23	
+Burâk
+@buraksocial
+	Turkey	39,190
+24	
+Maurizio Napolitano
+@napo
+	Italy	38,253
+25	
+bannzai
+@bannzai
+	Japan	37,084
+26	
+Lars Schneider
+@larsxschneider
+	Germany	36,995
+27	
+Tam Nguyen Duc
+@tamnd
+	Vietnam	35,648
+28	
+Hendi Santika
+@hendisantika
+	Indonesia	35,347
+29	
+Umer_Fareed
+@umerfareeddev
+	Pakistan	35,122
+30	
+Chun-Sheng, Li
+@peter279k
+	Taiwan	33,912
+31	
+Michał Górny
+@mgorny
+	Poland	33,745
+32	
+zhaoolee
+@zhaoolee
+	United States	33,185
+33	
+Marcus Ramberg
+@marcusramberg
+	Norway	32,490
+34	
+Gian Paolo
+@eun0115
+	Philippines	31,101
+35	
+Joriz Villanueva
+@jrzvnn
+	Philippines	29,700
+36	
+Ecrox Chain
+@ecroxchain
+	Singapore	28,862
+37	
+Charles Chrismann
+@Charles-Chrismann
+	France	28,487
+38	
+Muhammad Abdullah Khabir
+@Awan
+	Pakistan	28,044
+39	
+Przemysław Kłys
+@PrzemyslawKlys
+	Poland	27,754
+40	
+Brian Chan
+@brianchandotcom
+	United States	25,444
+41	
+Nhan N. TRAN
+@ngocnhan2003
+	Vietnam	25,313
+42	
+Lup Yuen Lee
+@lupyuen
+	Singapore	24,942
+43	
+Fabiana ⚡️ Campanari
+@FabianaCampanari
+	Brazil	24,655
+44	
+Daniel Trzeciński
+@DanielTRZ
+	Poland	22,870
+45	
+Simon Cropp
+@SimonCropp
+	Australia	22,590
+46	
+Alex Unnippillil
+@Alex-Unnippillil
+	Canada	22,369
+47	
+Po-Chuan Hsieh
+@sunpoet
+	Taiwan	22,250
+48	
+Kim Morrison
+@kim-em
+	Australia	20,830
+49	
+undefined value
+@mig1023
+	Russia	20,673
+50	
+Ofer Chen
+@oferchen
+	Israel	20,011
+51	
+Wealth Hajoh
+@Wealthometer
+	Nigeria	19,983
+52	
+James Pether Sörling
+@pethers
+	Sweden	19,388
+53	
+Niek van der Maas
+@Niek
+	Netherlands	19,074
+54	
+Anthony Green
+@atgreen
+	Canada	18,993
+55	
+Tiemen
+@ThaTiemsz
+	Netherlands	18,432
+56	
+Toni Wahrstätter
+@nerolation
+	Austria	18,254
+57	
+yuiseki
+@yuiseki
+	Japan	17,726
+58	
+Kotaro Chikuba
+@mizchi
+	Japan	17,505
+59	
+Shahid Ali
+@shahidali54
+	Pakistan	17,365
+60	
+Azu
+@azukashi
+	Indonesia	17,126
+61	
+Mark Karpelès
+@MagicalTux
+	Japan	16,532
+62	
+Christoph Guttandin
+@chrisguttandin
+	Germany	16,478
+63	
+xiaolai
+@xiaolai
+	China	16,427
+64	
+Fabian Affolter
+@fabaff
+	Switzerland	16,400
+65	
+Dietrich Ayala
+@autonome
+	Netherlands	16,351
+66	
+Harper Reed
+@harperreed
+	United States	16,050
+67	
+BigDargon
+@bigdargon
+	Vietnam	15,311
+68	
+Pulipuli Chen
+@pulipulichen
+	Taiwan	15,221
+69	
+Никифор
+@herndev
+	Philippines	15,155
+70	
+Ayan Fernandes de
+@AyanCoders
+	Brazil	15,102
+71	
+Tokuhiro Matsuno
+@tokuhirom
+	Japan	14,873
+72	
+A. H. M. Azimul Haque
+@Azimul-Haque
+	Bangladesh	14,801
+73	
+Ipang Dwi
+@ipang-dwi
+	Indonesia	14,506
+74	
+Rui Chen
+@chenrui333
+	United States	14,385
+75	
+Amos Wenger
+@fasterthanlime
+	France	14,156
+76	
+Daniel Roe
+@danielroe
+	United Kingdom	13,296
+77	
+Andrea Borruso
+@aborruso
+	Italy	13,218
+78	
+Na'aman Hirschfeld
+@Goldziher
+	Germany	13,123
+79	
+Abdillah Haidar
+@X-Hozmi
+	Indonesia	12,680
+80	
+Vitor Mattos
+@vitormattos
+	Brazil	12,678
+81	
+Arthur Zamarin
+@arthurzam
+	Israel	12,544
+82	
+Nicolas Grekas
+@nicolas-grekas
+	France	12,519
+83	
+Andrey Helldar
+@andrey-helldar
+	Russia	12,376
+84	
+Ronald Vergel Dela Cruz
+@rnldvrgl
+	Philippines	12,370
+85	
+Zhiwei Li
+@lzwjava
+	China	11,988
+86	
+Gábor Csárdi
+@gaborcsardi
+	Spain	11,898
+87	
+kuu(Fumiya Kume)
+@fumiya-kume
+	Japan	11,836
+88	
+John Aerial J. Azcune
+@STICKnoLOGIC
+	Philippines	11,781
+89	
+Dreamwalker
+@JAICHANGPARK
+	South Korea	11,624
+90	
+Phillip Krüger
+@phillip-kruger
+	Australia	11,348
+91	
+Yuji Ueki
+@unhappychoice
+	Japan	11,240
+92	
+Fabio Votta
+@favstats
+	Netherlands	11,135
+93	
+Junichi Kato
+@j5ik2o
+	Japan	11,113
+94	
+Martin Costello
+@martincostello
+	United Kingdom	11,074
+95	
+Anto
+@xplshn
+	Argentina	11,012
+96	
+Guilherme Branco Stracini
+@guibranco
+	Ireland	10,845
+97	
+Gaétan Lepage
+@GaetanLepage
+	France	10,642
+98	
+Guennadi Maximov C
+@DrKJeff16
+	Mexico	10,633
+99	
+chernistry
+@chernistry
+	Israel	10,626
+100	
+Sandro
+@SuperSandro2000
+	Germany	10,596
+
+Data: top-github-users (by public contributions) · like committers.top. Tap a name → live Cerebras roast.
